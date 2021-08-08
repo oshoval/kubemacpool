@@ -11,12 +11,18 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/k8snetworkplumbingwg/kubemacpool/pkg/names"
 	pool_manager "github.com/k8snetworkplumbingwg/kubemacpool/pkg/pool-manager"
+	"github.com/k8snetworkplumbingwg/kubemacpool/tests/kubectl"
+
 	kubevirtv1 "kubevirt.io/client-go/api/v1"
 )
 
@@ -270,6 +276,7 @@ var _ = Describe("[rfe_id:3503][crit:medium][vendor:cnv-qe@redhat.com][level:com
 					})
 				})
 			})
+
 			Context("and when restarting kubeMacPool and trying to create a VM with the same manually configured MAC as an older VM", func() {
 				It("[test_id:2179]should return an error because the MAC address is taken by the older VM", func() {
 					vm1 := CreateVmObject(TestNamespace, false, []kubevirtv1.Interface{newInterface("br1", "02:00:ff:ff:ff:ff")}, []kubevirtv1.Network{newNetwork("br1")})
@@ -879,6 +886,43 @@ var _ = Describe("[rfe_id:3503][crit:medium][vendor:cnv-qe@redhat.com][level:com
 					})
 				})
 			})
+
+			Context("and creating two VMs with same mac, one on opt-out namespace", func() {
+				BeforeEach(func() {
+					macAddress := "02:00:ff:ff:ff:ff"
+
+					vm1 := CreateVmObject(TestNamespace, false, []kubevirtv1.Interface{newInterface("br1", macAddress)}, []kubevirtv1.Network{newNetwork("br1")})
+					err := testClient.VirtClient.Create(context.TODO(), vm1)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(net.ParseMAC(vm1.Spec.Template.Spec.Domain.Devices.Interfaces[0].MacAddress)).ToNot(BeEmpty(), "Should successfully parse mac address")
+
+					err = addLabelsToNamespace(OtherTestNamespace, map[string]string{vmNamespaceOptInLabel: "ignore"})
+					Expect(err).ToNot(HaveOccurred(), "should be able to add the namespace labels")
+
+					vm2 := CreateVmObject(OtherTestNamespace, false, []kubevirtv1.Interface{newInterface("br1", macAddress)}, []kubevirtv1.Network{newNetwork("br1")})
+					err = testClient.VirtClient.Create(context.TODO(), vm2)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(net.ParseMAC(vm2.Spec.Template.Spec.Domain.Devices.Interfaces[0].MacAddress)).ToNot(BeEmpty(), "Should successfully parse mac address")
+				})
+
+				It("should detect duplicate macs gauge after cleaning the opt-out label and restarting kubemacpool", func() {
+					err := cleanNamespaceLabels(OtherTestNamespace)
+					Expect(err).ToNot(HaveOccurred(), "should be able to remove the namespace labels")
+
+					err = initKubemacpoolParams()
+					Expect(err).ToNot(HaveOccurred())
+
+					metrics, _, err := getMetrics()
+					Expect(err).ToNot(HaveOccurred())
+
+					expectedMetric := "kubevirt_kmp_duplicate_macs"
+					expectedValue := "1"
+					metric := findMetric(metrics, expectedMetric)
+					Expect(metric).ToNot(BeEmpty(), fmt.Sprintf("metric %s does not appear in endpoint scrape", expectedMetric))
+					Expect(metric).To(Equal(fmt.Sprintf("%s %s", expectedMetric, expectedValue)),
+						fmt.Sprintf("metric %s does not have the expected value %s", expectedMetric, expectedValue))
+				})
+			})
 		})
 	})
 })
@@ -940,4 +984,41 @@ func deleteVMI(vm *kubevirtv1.VirtualMachine) {
 		Expect(err).ToNot(HaveOccurred(), "should success getting vm if is still there")
 		return false
 	}, timeout, pollingInterval).Should(BeTrue(), "should eventually fail getting vm with IsNotFound after vm deletion")
+}
+
+func getMetrics() (string, string, error) {
+	podList, err := getManagerPods()
+	if err != nil {
+		return "", "", err
+	}
+
+	stdout, stderr, err := kubectl.Kubectl("exec", "-n", managerNamespace, podList.Items[0].Name, "--",
+		"curl", "-L", "-k", "-s", "http://127.0.0.1:8080/metrics")
+
+	return stdout, stderr, err
+}
+
+func getManagerPods() (*v1.PodList, error) {
+	deployment, err := testClient.KubeClient.AppsV1().Deployments(managerNamespace).Get(context.TODO(), names.MANAGER_DEPLOYMENT, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	labelSelector := labels.Set(deployment.Spec.Selector.MatchLabels).String()
+	podList, err := testClient.KubeClient.CoreV1().Pods(managerNamespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector})
+	if err != nil {
+		return nil, err
+	}
+
+	return podList, err
+}
+
+func findMetric(metrics string, expectedMetric string) string {
+	for _, line := range strings.Split(metrics, "\n") {
+		if strings.HasPrefix(line, expectedMetric+" ") {
+			return line
+		}
+	}
+
+	return ""
 }
