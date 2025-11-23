@@ -59,6 +59,10 @@ type Options struct {
 
 	// ExtraLabels extra labels that will be added to created secrets
 	ExtraLabels map[string]string
+
+	// LogLevel custom log level for certificate manager logging.
+	// Default is 0 (info level). Higher values increase verbosity.
+	LogLevel int
 }
 
 func (o *Options) validate() error {

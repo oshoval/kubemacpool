@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -127,6 +128,14 @@ func runCertManager() {
 		CertRotateInterval:  certRotateInterval,
 		CertOverlapInterval: certOverlapInterval,
 		ExtraLabels:         names.IncludeRelationshipLabels(nil),
+	}
+
+	// Set custom logger verbosity level if CERT_MANAGER_LOG_LEVEL is set
+	// CERT_MANAGER_LOG_LEVEL=1 enables V(1) logs, level=2 enables V(2) logs, etc.
+	if certLogLevelStr, ok := os.LookupEnv("CERT_MANAGER_LOG_LEVEL"); ok {
+		if certLogLevel, err := strconv.Atoi(certLogLevelStr); err == nil {
+			certOptions.LogLevel = certLogLevel
+		}
 	}
 
 	certManager, err := certificate.NewManager(mgr.GetClient(), certOptions)

@@ -108,6 +108,14 @@ func NewManager(
 		return nil, err
 	}
 
+	logger := logf.Log.WithName("certificate/Manager").
+		WithValues("webhookType", options.WebhookType, "webhookName", options.WebhookName).
+		V(options.LogLevel)
+
+		// TODO remove
+	logger.Info("Certificate manager initialized", "configuredLogLevel", options.LogLevel)
+	logger.V(1).Info("Certificate manager verbose logging enabled (V1)")
+
 	m := &Manager{
 		client:                 client,
 		webhookName:            options.WebhookName,
@@ -119,8 +127,7 @@ func NewManager(
 		serviceCertDuration:    options.CertRotateInterval,
 		serviceOverlapDuration: options.CertOverlapInterval,
 		extraLabels:            options.ExtraLabels,
-		log: logf.Log.WithName("certificate/Manager").
-			WithValues("webhookType", options.WebhookType, "webhookName", options.WebhookName),
+		log:                    logger,
 	}
 	return m, nil
 }

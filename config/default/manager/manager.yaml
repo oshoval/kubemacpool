@@ -275,6 +275,8 @@ spec:
             value: "4380h0m0s" # Half Year
           - name: CERT_OVERLAP_INTERVAL
             value: "24h0m0s" # One day
+          - name: CERT_MANAGER_LOG_LEVEL
+            value: 0
         terminationMessagePolicy: FallbackToLogsOnError
       priorityClassName: system-cluster-critical
       terminationGracePeriodSeconds: 5
