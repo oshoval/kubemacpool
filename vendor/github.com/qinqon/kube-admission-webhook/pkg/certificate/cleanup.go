@@ -73,7 +73,7 @@ func (m *Manager) earliestElapsedForCleanup(log logr.Logger, certificates []*x50
 	deadline := m.earliestCleanupDeadlineForCerts(certificates)
 	now := m.now()
 	elapsedForCleanup := deadline.Sub(now)
-	log.Info(fmt.Sprintf("{now: %s, deadline: %s, elapsedForCleanup: %s}", now, deadline, elapsedForCleanup))
+	log.V(1).Info(fmt.Sprintf("{now: %s, deadline: %s, elapsedForCleanup: %s}", now, deadline, elapsedForCleanup))
 	return elapsedForCleanup, nil
 }
 
@@ -164,7 +164,7 @@ func (m *Manager) cleanUpCertificates(certificates []*x509.Certificate) []*x509.
 	// create a zero-length slice with the same underlying array
 	cleanedUpCertificates := certificates[:0]
 	for _, certificate := range certificates {
-		logger.Info("Checking certificate for cleanup", "now", now, "NotBefore", certificate.NotBefore, "NotAfter", certificate.NotAfter)
+		logger.V(1).Info("Checking certificate for cleanup", "now", now, "NotBefore", certificate.NotBefore, "NotAfter", certificate.NotAfter)
 
 		// Expired certificate are cleaned up
 		expirationDate := certificate.NotAfter

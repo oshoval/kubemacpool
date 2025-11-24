@@ -172,7 +172,7 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/qinqon/kube-admission-webhook v0.21.1
+# github.com/qinqon/kube-admission-webhook v0.21.1 => /home/oshoval/project/kube-admission-webhook
 ## explicit; go 1.23.0
 github.com/qinqon/kube-admission-webhook/pkg/certificate
 github.com/qinqon/kube-admission-webhook/pkg/certificate/triple
@@ -860,3 +860,4 @@ sigs.k8s.io/yaml
 # k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.34.1
 # k8s.io/sample-controller => k8s.io/sample-controller v0.34.1
 # sigs.k8s.io/structured-merge-diff/v4 => sigs.k8s.io/structured-merge-diff/v4 v4.4.1
+# github.com/qinqon/kube-admission-webhook => /home/oshoval/project/kube-admission-webhook

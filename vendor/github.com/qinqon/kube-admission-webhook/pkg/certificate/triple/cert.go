@@ -175,6 +175,6 @@ func VerifyTLS(certsPEM, keyPEM, caBundle []byte) error {
 		return errors.Wrap(err, "failed parsing TLS public/private key")
 	}
 
-	logger.Info("TLS certificates chain verified")
+	logger.V(1).Info("TLS certificates chain verified")
 	return nil
 }

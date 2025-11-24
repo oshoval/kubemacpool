@@ -128,3 +128,5 @@ replace (
 	k8s.io/sample-controller => k8s.io/sample-controller v0.34.1
 	sigs.k8s.io/structured-merge-diff/v4 => sigs.k8s.io/structured-merge-diff/v4 v4.4.1
 )
+
+replace github.com/qinqon/kube-admission-webhook => /home/oshoval/project/kube-admission-webhook
